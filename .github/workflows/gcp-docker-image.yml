@@ -35,6 +35,9 @@ on:
         description: "Docker build arguments"
         required: false
         type: string
+      secrets:
+        GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+        GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
         
   workflow_dispatch:    # 수동 실행 가능
     inputs:
@@ -91,7 +94,7 @@ jobs:
         name: Google Auth
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: '${{ inputs.environment == "prod" && secrets.PROD_GCP_SA_KEY || secrets.GCP_SA_KEY }}'
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
         
       # Authenticate Docker to Google Cloud Artifact Registry
       - name: Docker Auth
@@ -107,7 +110,9 @@ jobs:
       #   with:
       #     cluster_name: '${{ env.GKE_CLUSTER }}'
       #     location: '${{ env.GKE_ZONE }}'
-
+     secrets:
+      PROD_GCP_SA_KEY: ${{ secrets.PROD_GCP_SA_KEY }}
+      GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
       # Build the Docker image
       - name: 'Build and push Docker container'
         run: |-
