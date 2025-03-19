@@ -70,9 +70,9 @@ on:
         description: "Docker build arguments"
         required: false
         type: string
-      secrets:
-        GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-        GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+    secrets:
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
         
 jobs:
   build-and-push:
