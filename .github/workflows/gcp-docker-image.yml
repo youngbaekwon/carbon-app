@@ -80,7 +80,8 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
-
+    secrets: inherit
+    
     steps:
       - name: Validate environment
         run: |
