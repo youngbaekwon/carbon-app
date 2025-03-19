@@ -1,0 +1,112 @@
+name: Reusable Docker Build Workflow
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: "Deployment environment (dev, test, prod)"
+        required: true
+        type: string
+      gcp-region:
+        description: "GCP region"
+        required: false
+        type: string
+        default: "asia-northeast3"
+      dockerfile-path:
+        description: "Dockerfile path"
+        required: false
+        type: string
+        default: "./Dockerfile"
+      dockerfile-context:
+        description: "Docker build context"
+        required: false
+        type: string
+        default: "."
+      gcr-repo:
+        description: "GCR repository name"
+        required: true
+        type: string
+      gcr-image:
+        description: "application image"
+        required: true
+        type: string
+        default : "hello-gke-service"
+      build-args:
+        description: "Docker build arguments"
+        required: false
+        type: string
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Validate environment
+        run: |
+          if [ "${{ inputs.environment }}" != "dev" ] && [ "${{ inputs.environment }}" != "test" ] && [ "${{ inputs.environment }}" != "prod" ]; then
+            echo "Invalid environment: ${{ inputs.environment }}"
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - id: auth
+        name: Google Auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ inputs.environment == "prod" && secrets.PROD_GCP_SA_KEY || secrets.GCP_SA_KEY }}'
+        
+      # Authenticate Docker to Google Cloud Artifact Registry
+      - name: Docker Auth
+        uses: docker/login-action@v3
+        with:
+          username: 'oauth2accesstoken'
+          password: '${{ steps.auth.outputs.auth_token }}'
+          registry: '${{ inputs.gcp-region }}-docker.pkg.dev'
+
+      # Get the GKE credentials so we can deploy to the cluster
+      # - name: 'Set up GKE credentials'
+      #   uses: google-github-actions/get-gke-credentials@v2
+      #   with:
+      #     cluster_name: '${{ env.GKE_CLUSTER }}'
+      #     location: '${{ env.GKE_ZONE }}'
+
+      # Build the Docker image
+      - name: 'Build and push Docker container'
+        run: |-
+          DOCKER_TAG="${{ inputs.gcp-region }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ inputs.gcr-repo }}/${{ inputs.gcr-image }}:${{ github.sha }}"
+
+          docker build \
+            --tag "${DOCKER_TAG}" \
+            --build-arg GITHUB_SHA="${GITHUB_SHA}" \
+            --build-arg GITHUB_REF="${GITHUB_REF}" \
+            --cache-from type=gha \
+            --cache-to type=gha,mode=max \
+            .
+
+          docker push "${DOCKER_TAG}"
+          
+      # - name: Set up Cloud SDK
+      #   uses: 'google-github-actions/setup-gcloud@v2'
+
+      # - name: Configure Docker for GCR
+      #   run: gcloud auth configure-docker asia-northeast3-docker.pkg.dev
+      
+      # - name: Set up Docker Buildx
+      #   uses: docker/setup-buildx-action@v3
+
+      # - name: Build and push
+      #   uses: docker/build-push-action@v6
+      #   with:
+      #     file: ${{ inputs.dockerfile-path }}
+      #     context: ${{ inputs.dockerfile-context }}
+      #     push: true
+      #     tags: |
+      #       ${{ inputs.gcp-region }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ inputs.gcr-repo }}/${{ inputs.gcr-image }}:${{ github.sha }}
+      #       ${{ inputs.gcp-region }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ inputs.gcr-repo }}/${{ inputs.gcr-image }}:latest
+      #     build-args: ${{ inputs.build-args }}
+      #     cache-from: type=gha
+      #     cache-to: type=gha,mode=max
+          
