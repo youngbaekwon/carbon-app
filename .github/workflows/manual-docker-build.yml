@@ -36,4 +36,3 @@ jobs:
     secrets:
       GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
       GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-      WORKLOAD_IDENTITY_PROVIDER : ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
