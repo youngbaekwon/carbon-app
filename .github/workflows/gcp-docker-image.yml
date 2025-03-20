@@ -1,42 +1,7 @@
 name: Reusable Docker Build Workflow
 
 on:
-  workflow_dispatch:    # 수동 실행 가능
-    inputs:
-      environment:
-        description: "Deployment environment (dev, test, prod)"
-        required: true
-        type: string
-      gcp-region:
-        description: "GCP region"
-        required: false
-        type: string
-        default: "asia-northeast3"
-      dockerfile-path:
-        description: "Dockerfile path"
-        required: false
-        type: string
-        default: "./Dockerfile"
-      dockerfile-context:
-        description: "Docker build context"
-        required: false
-        type: string
-        default: "."
-      gcr-repo:
-        description: "GCR repository name"
-        required: true
-        type: string
-      gcr-image:
-        description: "application image"
-        required: true
-        type: string
-        default : "hello-gke-service"
-      build-args:
-        description: "Docker build arguments"
-        required: false
-        type: string
-        
-  # workflow_call:
+  # workflow_dispatch:    # 수동 실행 가능
   #   inputs:
   #     environment:
   #       description: "Deployment environment (dev, test, prod)"
@@ -70,6 +35,41 @@ on:
   #       description: "Docker build arguments"
   #       required: false
   #       type: string
+        
+  workflow_call:
+    inputs:
+      environment:
+        description: "Deployment environment (dev, test, prod)"
+        required: true
+        type: string
+      gcp-region:
+        description: "GCP region"
+        required: false
+        type: string
+        default: "asia-northeast3"
+      dockerfile-path:
+        description: "Dockerfile path"
+        required: false
+        type: string
+        default: "./Dockerfile"
+      dockerfile-context:
+        description: "Docker build context"
+        required: false
+        type: string
+        default: "."
+      gcr-repo:
+        description: "GCR repository name"
+        required: true
+        type: string
+      gcr-image:
+        description: "application image"
+        required: true
+        type: string
+        default : "hello-gke-service"
+      build-args:
+        description: "Docker build arguments"
+        required: false
+        type: string
   #   secrets:
   #     GCP_PROJECT_ID:
   #       required: true
