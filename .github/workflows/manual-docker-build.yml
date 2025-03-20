@@ -30,4 +30,4 @@ jobs:
       gcr-image: ${{ inputs.gcr-image }}
     secrets:
       GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
-      PROJECT_ID: ${{ secrets.PROJECT_ID }}
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
