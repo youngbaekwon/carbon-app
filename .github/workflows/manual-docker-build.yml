@@ -1,0 +1,30 @@
+# .github/workflows/manual-docker-build.yml
+name: Manual Docker Build and Push
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment Environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - prod
+      gcr-repo:
+        description: 'Container Repository'
+        required: true
+        type: string
+      gcr-image:
+        description: 'Container Image Name'
+        required: true
+        type: string
+
+jobs:
+  call-docker-build:
+    uses: ./.github/workflows/gcp-docker-image.yml
+    with:
+      environment: ${{ inputs.environment }}
+      gcr-repo: ${{ inputs.gcr-repo }}
+      gcr-image: ${{ inputs.gcr-image }}
