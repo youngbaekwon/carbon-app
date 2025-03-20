@@ -36,59 +36,68 @@ on:
         required: false
         type: string
         
-  workflow_call:
-    inputs:
-      environment:
-        description: "Deployment environment (dev, test, prod)"
-        required: true
-        type: string
-      gcp-region:
-        description: "GCP region"
-        required: false
-        type: string
-        default: "asia-northeast3"
-      dockerfile-path:
-        description: "Dockerfile path"
-        required: false
-        type: string
-        default: "./Dockerfile"
-      dockerfile-context:
-        description: "Docker build context"
-        required: false
-        type: string
-        default: "."
-      gcr-repo:
-        description: "GCR repository name"
-        required: true
-        type: string
-      gcr-image:
-        description: "application image"
-        required: true
-        type: string
-        default : "hello-gke-service"
-      build-args:
-        description: "Docker build arguments"
-        required: false
-        type: string
-    secrets:
-      GCP_PROJECT_ID:
-        required: true
-      GCP_SA_KEY: 
-        required: true
+  # workflow_call:
+  #   inputs:
+  #     environment:
+  #       description: "Deployment environment (dev, test, prod)"
+  #       required: true
+  #       type: string
+  #     gcp-region:
+  #       description: "GCP region"
+  #       required: false
+  #       type: string
+  #       default: "asia-northeast3"
+  #     dockerfile-path:
+  #       description: "Dockerfile path"
+  #       required: false
+  #       type: string
+  #       default: "./Dockerfile"
+  #     dockerfile-context:
+  #       description: "Docker build context"
+  #       required: false
+  #       type: string
+  #       default: "."
+  #     gcr-repo:
+  #       description: "GCR repository name"
+  #       required: true
+  #       type: string
+  #     gcr-image:
+  #       description: "application image"
+  #       required: true
+  #       type: string
+  #       default : "hello-gke-service"
+  #     build-args:
+  #       description: "Docker build arguments"
+  #       required: false
+  #       type: string
+  #   secrets:
+  #     GCP_PROJECT_ID:
+  #       required: true
+  #     GCP_SA_KEY: 
+  #       required: true
         
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
-    secrets: inherit
     
     steps:
       - name: Validate environment
         run: |
+          echo "==== Debug Information ===="
+          echo "GitHub Reference: ${{ github.ref }}"
+          echo "GitHub SHA: ${{ github.sha }}"
+          echo "Environment: ${{ inputs.environment }}"
+          echo "GCP Region: ${{ inputs.gcp-region }}"
+          echo "GCR Repository: ${{ inputs.gcr-repo }}"
+          echo "GCR Image: ${{ inputs.gcr-image }}"
+          echo "=========================="
+          
           if [ "${{ inputs.environment }}" != "dev" ] && [ "${{ inputs.environment }}" != "test" ] && [ "${{ inputs.environment }}" != "prod" ]; then
             echo "Invalid environment: ${{ inputs.environment }}"
             exit 1
           fi
+          echo "✅ Environment validation passed"
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -98,14 +107,36 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
-        
-      # Authenticate Docker to Google Cloud Artifact Registry
+          token_format: 'access_token'  # 명시적으로 지정
+          create_credentials_file: true # credentials 파일 생성
+      - name: Verify Authentication
+        run: |
+          echo "Checking authentication status..."
+          echo "Auth Token exists: ${{ steps.auth.outputs.auth_token != '' }}"
+          gcloud auth list
+          gcloud config list  
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+      
+      - name: Configure Docker
+        run: |
+          gcloud auth configure-docker asia-northeast3-docker.pkg.dev --quiet
+      
       - name: Docker Auth
         uses: docker/login-action@v3
         with:
-          username: 'oauth2accesstoken'
-          password: '${{ steps.auth.outputs.auth_token }}'
-          registry: '${{ inputs.gcp-region }}-docker.pkg.dev'
+          registry: 'asia-northeast3-docker.pkg.dev'
+          username: _json_key
+          password: ${{ secrets.GCP_SA_KEY }}
+          
+      # Authenticate Docker to Google Cloud Artifact Registry
+      # - name: Docker Auth
+      #   uses: docker/login-action@v3
+      #   with:
+      #     username: 'oauth2accesstoken'
+      #     password: '${{ steps.auth.outputs.auth_token }}'
+      #     registry: '${{ inputs.gcp-region }}-docker.pkg.dev'
 
       # Get the GKE credentials so we can deploy to the cluster
       # - name: 'Set up GKE credentials'
@@ -113,43 +144,74 @@ jobs:
       #   with:
       #     cluster_name: '${{ env.GKE_CLUSTER }}'
       #     location: '${{ env.GKE_ZONE }}'
-     secrets:
-      PROD_GCP_SA_KEY: ${{ secrets.PROD_GCP_SA_KEY }}
-      GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+
+      # Docker 빌드 전 환경 확인
+      - name: Verify Docker Environment
+        run: |
+          echo "Checking Docker installation..."
+          docker --version
+          echo "Checking Docker daemon status..."
+          docker info
+          echo "Listing available Docker images..."
+          docker images
+          
       # Build the Docker image
       - name: 'Build and push Docker container'
-        run: |-
+        run: |
+          echo "Setting up Docker build variables..."
           DOCKER_TAG="${{ inputs.gcp-region }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ inputs.gcr-repo }}/${{ inputs.gcr-image }}:${{ github.sha }}"
-
+          echo "Docker tag: ${DOCKER_TAG}"
+          
           docker build \
             --tag "${DOCKER_TAG}" \
             --build-arg GITHUB_SHA="${GITHUB_SHA}" \
             --build-arg GITHUB_REF="${GITHUB_REF}" \
             --cache-from type=gha \
             --cache-to type=gha,mode=max \
-            .
+            . 2>&1 | tee build.log
 
-          docker push "${DOCKER_TAG}"
-          
-      # - name: Set up Cloud SDK
-      #   uses: 'google-github-actions/setup-gcloud@v2'
+          if [ ${PIPESTATUS[0]} -eq 0 ]; then
+            echo "✅ Docker build successful"
+          else
+            echo "❌ Docker build failed"
+            echo "Build logs:"
+            cat build.log
+            exit 1
+          fi
 
-      # - name: Configure Docker for GCR
-      #   run: gcloud auth configure-docker asia-northeast3-docker.pkg.dev
+          echo "Pushing Docker image to registry..."
+          docker push "${DOCKER_TAG}" 2>&1 | tee push.log
+
+          if [ ${PIPESTATUS[0]} -eq 0 ]; then
+            echo "✅ Docker push successful"
+          else
+            echo "❌ Docker push failed"
+            echo "Push logs:"
+            cat push.log
+            exit 1
+          fi
+
+      # 작업 완료 후 상태 보고
+      - name: Workflow Summary
+        if: always()
+        run: |
+          echo "==== Workflow Summary ===="
+          echo "Environment: ${{ inputs.environment }}"
+          echo "Image: ${{ inputs.gcp-region }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ inputs.gcr-repo }}/${{ inputs.gcr-image }}:${{ github.sha }}"
+          echo "Build Status: ${{ job.status }}"
+          echo "=========================="
       
-      # - name: Set up Docker Buildx
-      #   uses: docker/setup-buildx-action@v3
-
-      # - name: Build and push
-      #   uses: docker/build-push-action@v6
-      #   with:
-      #     file: ${{ inputs.dockerfile-path }}
-      #     context: ${{ inputs.dockerfile-context }}
-      #     push: true
-      #     tags: |
-      #       ${{ inputs.gcp-region }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ inputs.gcr-repo }}/${{ inputs.gcr-image }}:${{ github.sha }}
-      #       ${{ inputs.gcp-region }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ inputs.gcr-repo }}/${{ inputs.gcr-image }}:latest
-      #     build-args: ${{ inputs.build-args }}
-      #     cache-from: type=gha
-      #     cache-to: type=gha,mode=max
+      # 실패 시 디버그 정보 수집
+      - name: Collect Debug Info on Failure
+        if: failure()
+        run: |
+          echo "==== Debug Information on Failure ===="
+          echo "Docker version:"
+          docker version
+          echo "Docker info:"
+          docker info
+          echo "System info:"
+          uname -a
+          df -h
+          echo "=========================="
           
