@@ -75,6 +75,8 @@ on:
         required: true
       GCP_SA_KEY: 
         required: true
+      WORKLOAD_IDENTITY_PROVIDER :
+        required: true
         
 jobs:
   build-and-push:
