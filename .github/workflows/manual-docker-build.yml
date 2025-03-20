@@ -20,6 +20,10 @@ on:
         description: 'Container Image Name'
         required: true
         type: string
+      dockerfile-path:
+        description: 'Docker file path'
+        required: true
+        type: string
 
 jobs:
   call-docker-build:
@@ -28,6 +32,7 @@ jobs:
       environment: ${{ inputs.environment }}
       gcr-repo: ${{ inputs.gcr-repo }}
       gcr-image: ${{ inputs.gcr-image }}
+      dockerfile-path: ${{ inputs.dockerfile-path }}
     secrets:
       GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
       GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
