@@ -91,6 +91,7 @@ jobs:
           echo "GCP Region: ${{ inputs.gcp-region }}"
           echo "GCR Repository: ${{ inputs.gcr-repo }}"
           echo "GCR Image: ${{ inputs.gcr-image }}"
+          echo "Dockerfile path: ${{ inputs.dockerfile-path }}"
           echo "=========================="
           
           if [ "${{ inputs.environment }}" != "dev" ] && [ "${{ inputs.environment }}" != "test" ] && [ "${{ inputs.environment }}" != "prod" ]; then
