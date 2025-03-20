@@ -28,3 +28,6 @@ jobs:
       environment: ${{ inputs.environment }}
       gcr-repo: ${{ inputs.gcr-repo }}
       gcr-image: ${{ inputs.gcr-image }}
+    secrets:
+      GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+      PROJECT_ID: ${{ secrets.PROJECT_ID }}
