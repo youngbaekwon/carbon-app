@@ -66,11 +66,6 @@ on:
         required: true
         type: string
         default : "hello-gke-service"
-      gcr-internal-image:
-        description: "internal application image"
-        required: false
-        type: string
-        default : "hello-gke-service-internal"
       build-args:
         description: "Docker build arguments"
         required: false
@@ -134,23 +129,6 @@ jobs:
         run: |
           echo "Setting up Docker build variables..."
           DOCKER_TAG="${{ inputs.gcp-region }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ inputs.gcr-repo }}/${{ inputs.gcr-image }}:${{ github.sha }}"
-          echo "Docker tag: ${DOCKER_TAG}"
-          
-          docker build \
-            --tag "${DOCKER_TAG}" \
-            --build-arg GITHUB_SHA="${GITHUB_SHA}" \
-            --build-arg GITHUB_REF="${GITHUB_REF}" \
-            --cache-from type=gha \
-            --cache-to type=gha,mode=max \
-            .
-
-          echo "Pushing Docker image to registry..."
-          docker push "${DOCKER_TAG}"
-          
-      - name: 'Build and push Docker container by internal service'
-        run: |
-          echo "Setting up Docker build variables..."
-          DOCKER_TAG="${{ inputs.gcp-region }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ inputs.gcr-repo }}/${{ inputs.gcr-internal-image }}:${{ github.sha }}"
           echo "Docker tag: ${DOCKER_TAG}"
           
           docker build \
