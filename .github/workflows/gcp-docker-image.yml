@@ -70,11 +70,11 @@ on:
         description: "Docker build arguments"
         required: false
         type: string
-  #   secrets:
-  #     GCP_PROJECT_ID:
-  #       required: true
-  #     GCP_SA_KEY: 
-  #       required: true
+    secrets:
+      GCP_PROJECT_ID:
+        required: true
+      GCP_SA_KEY: 
+        required: true
         
 jobs:
   build-and-push:
