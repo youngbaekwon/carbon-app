@@ -115,14 +115,28 @@ jobs:
           echo "Auth Token exists: ${{ steps.auth.outputs.auth_token != '' }}"
           gcloud auth list
           gcloud config list  
-          
-      # Authenticate Docker to Google Cloud Artifact Registry
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+      
+      - name: Configure Docker
+        run: |
+          gcloud auth configure-docker asia-northeast3-docker.pkg.dev --quiet
+      
       - name: Docker Auth
         uses: docker/login-action@v3
         with:
-          username: 'oauth2accesstoken'
-          password: '${{ steps.auth.outputs.auth_token }}'
-          registry: '${{ inputs.gcp-region }}-docker.pkg.dev'
+          registry: 'asia-northeast3-docker.pkg.dev'
+          username: _json_key
+          password: ${{ secrets.GCP_SA_KEY }}
+          
+      # Authenticate Docker to Google Cloud Artifact Registry
+      # - name: Docker Auth
+      #   uses: docker/login-action@v3
+      #   with:
+      #     username: 'oauth2accesstoken'
+      #     password: '${{ steps.auth.outputs.auth_token }}'
+      #     registry: '${{ inputs.gcp-region }}-docker.pkg.dev'
 
       # Get the GKE credentials so we can deploy to the cluster
       # - name: 'Set up GKE credentials'
